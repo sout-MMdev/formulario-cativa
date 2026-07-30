@@ -1,20 +1,26 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
-  // Pasta raiz do código-fonte
-  root: ".",
+  plugins: [react()],
 
-  // Arquivos estáticos (CSS, imagens, splash.html, agencias.json)
-  publicDir: "public",
-
-  // Servidor de desenvolvimento (substitui o Live Server)
-  server: {
-    port: 5501, // mesma porta que você já usava
-    open: true, // abre o navegador automaticamente
-    host: true, // permite acessar de outros dispositivos na rede
+  resolve: {
+    alias: {
+      // "@/..." aponta sempre para src/ — evita ../../../ nos imports
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
   },
 
-  // Build de produção
+  // Arquivos estáticos servidos direto (agencias.json, imagens)
+  publicDir: "public",
+
+  server: {
+    port: 5501,
+    open: true,
+    host: true,
+  },
+
   build: {
     outDir: "dist",
     sourcemap: true,

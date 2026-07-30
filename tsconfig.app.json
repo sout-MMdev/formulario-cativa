@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    /* ── Linguagem ─────────────────────────────────────── */
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+
+    /* ── Verificação de tipos ──────────────────────────── */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* ── Atalhos de importação ─────────────────────────── */
+    /* Permite escrever "@/nucleo/config" em vez de "../../nucleo/config" */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+
+    /* ── Saída ─────────────────────────────────────────── */
+    /* O Vite cuida do bundle; o tsc só valida os tipos. */
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
+  },
+  "include": ["src"]
+}
