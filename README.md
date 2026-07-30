@@ -1,138 +1,149 @@
-# Formulário Comercial — Cativa Operadora
+# Relatório Comercial — Cativa Operadora
 
-Formulário web de **relatório comercial** dos executivos da Cativa Operadora.
-Feito em **React + TypeScript** com Vite.
+Sistema de **relatório comercial** dos executivos da Cativa Operadora, em
+**dois aplicativos** que dividem a mesma lógica:
 
-O executivo escolhe entre dois relatórios (pode preencher os dois no mesmo dia):
+| App                       | Para quem                     | Porta |
+| ------------------------- | ----------------------------- | ----- |
+| **desktop** (`@cativa/desktop`) | Preenchimento no computador   | 5501  |
+| **mobile** (`@cativa/mobile`)   | Preenchimento no celular (PWA) | 5502  |
 
-- **Visita** — agências visitadas, perfil comercial de cada uma, termômetro de
-  satisfação por setor e ações acordadas.
-- **Despesas** — trajetos com cálculo automático de reembolso por KM e despesas
-  com comprovante.
-
-Ao final, o Resumo consolida tudo e o dia é salvo (hoje em `localStorage`).
+Os dois calculam o reembolso, validam os campos e navegam entre relatórios
+usando **exatamente o mesmo código** — o pacote `@cativa/nucleo`. O que muda é
+só a interface.
 
 ---
 
 ## Como rodar
 
-Requisitos: [Node.js](https://nodejs.org/) 18 ou superior.
+Requisitos: [Node.js](https://nodejs.org/) 20 ou superior.
 
 ```bash
-npm install     # instalar as dependências
-npm run dev     # abre em http://localhost:5501
+npm install          # instala os três pacotes de uma vez
+
+npm run dev:desktop  # http://localhost:5501
+npm run dev:mobile   # http://localhost:5502
 ```
 
-| Comando             | O que faz                                       |
-| ------------------- | ----------------------------------------------- |
-| `npm run dev`       | Servidor de desenvolvimento com hot reload      |
-| `npm run build`     | Valida os tipos e gera a build em `dist/`       |
-| `npm run preview`   | Serve localmente a build de produção            |
-| `npm run typecheck` | Só a verificação de tipos                       |
+Dá para deixar os dois rodando ao mesmo tempo — as portas são diferentes.
+
+### Testar o mobile no celular de verdade
+
+O servidor já sobe aberto na rede local. Com o celular no **mesmo Wi-Fi**:
+
+```bash
+npm run dev:mobile
+```
+
+O Vite imprime o endereço de rede (algo como `http://192.168.1.4:5502`).
+Abra esse endereço no navegador do celular. O recarregamento automático
+funciona: salvou o arquivo, a tela do celular atualiza.
+
+Para instalar como aplicativo, no Chrome do Android use **⋮ → Instalar
+aplicativo**; no Safari do iPhone, **Compartilhar → Adicionar à Tela de
+Início**. (No iPhone a instalação só aparece em HTTPS ou em `localhost` —
+para testar em rede local, use o navegador mesmo.)
+
+### Comandos
+
+| Comando                 | O que faz                                     |
+| ----------------------- | --------------------------------------------- |
+| `npm run dev:desktop`   | Servidor do app desktop                       |
+| `npm run dev:mobile`    | Servidor do app mobile, aberto na rede local  |
+| `npm run build`         | Compila os dois apps                          |
+| `npm run build:mobile`  | Compila só o mobile                           |
+| `npm test`              | Testes das regras de negócio (49 casos)       |
+| `npm run typecheck`     | Verificação de tipos dos três pacotes         |
 
 ---
 
 ## Arquitetura
 
-A regra que organiza tudo: **cada coisa em uma pasta, nada solto no mesmo
-arquivo.** As camadas só olham para baixo — uma aba pode usar o núcleo, mas o
-núcleo nunca sabe que abas existem.
-
 ```
-src/
-├── nucleo/              REGRA DE NEGÓCIO — não conhece React
-│   ├── tipos/             interfaces de todo o domínio
-│   ├── config/            listas e constantes (um arquivo por assunto)
-│   │   ├── executivos.ts    nomes e e-mails
-│   │   ├── tarifas.ts       valor por KM e quem tem tarifa especial
-│   │   ├── agencia.ts       faturamento, produtos, atendentes
-│   │   ├── estresse.ts      níveis do termômetro e setores
-│   │   ├── despesas.ts      cartões e categorias
-│   │   ├── fluxo.ts         quais abas cada relatório percorre
-│   │   └── app.ts           APIs, datas, chave de armazenamento
-│   ├── regras/            funções puras — o cálculo do dinheiro mora aqui
-│   │   ├── reembolso.ts     tarifa, reembolso de KM, totais do dia
-│   │   ├── estresse.ts      validação de um registro do termômetro
-│   │   ├── validacao.ts     "esta aba pode avançar?"
-│   │   └── fluxo.ts         navegação entre etapas
-│   └── utils/             formatadores e gerador de ID
+formulario/
+├── packages/
+│   ├── nucleo/          ← A LÓGICA. Não conhece React nem CSS.
+│   │   └── src/
+│   │       ├── tipos/       interfaces do domínio
+│   │       ├── config/      executivos, tarifas, produtos, setores…
+│   │       ├── regras/      reembolso, validação, fluxo, termômetro
+│   │       ├── estado/      o reducer do dia (usado pelos 2 apps)
+│   │       ├── servicos/    IBGE, ViaCEP, agências, armazenamento
+│   │       └── utils/       formatadores
+│   │
+│   └── tema/            ← A IDENTIDADE VISUAL. Só CSS + ícones.
+│       ├── cores.css        a paleta da marca
+│       ├── tipografia.css   escala de tamanho e peso
+│       ├── efeitos.css      raios, sombras, transições
+│       ├── reset.css
+│       └── icones.ts        traçados SVG (dados puros, sem React)
 │
-├── servicos/            MUNDO EXTERNO
-│   ├── ibge.ts            municípios (autocomplete de cidade)
-│   ├── viacep.ts          logradouros (2ª fase do autocomplete)
-│   ├── agencias.ts        base de agências (public/agencias.json)
-│   └── armazenamento/     PONTO DE INTEGRAÇÃO COM O CRM
-│       ├── repositorioDias.ts   a interface
-│       ├── repositorioLocal.ts  implementação em localStorage
-│       └── index.ts             escolhe qual implementação usar
-│
-├── contexto/            ESTADO — um reducer, ações nomeadas
-│   ├── formularioReducer.ts
-│   ├── FormularioContexto.tsx
-│   └── useFormulario.ts
-│
-├── hooks/               reutilizáveis (debounce, clique fora, Esc, dias salvos)
-│
-├── componentes/
-│   ├── ui/                genéricos, sem regra de negócio
-│   │   ├── Botao/  Campo/  Icone/  Modal/
-│   │   ├── Autocomplete/  MultiSelecao/  SeletorData/
-│   ├── campos/            campos que já sabem de onde vêm os dados
-│   │   ├── CampoLocal.tsx    cidade (IBGE) → rua (ViaCEP)
-│   │   ├── CampoAgencia.tsx  autocomplete de agência
-│   │   └── CampoArquivo.tsx  anexo da nota fiscal
-│   └── layout/            Cabecalho/ TrilhaEtapas/ Painel/ Rodape/ Splash/
-│
-├── abas/                UMA PASTA POR ABA, com o CSS dela dentro
-│   ├── Identificacao/
-│   ├── Visita/
-│   ├── Agencias/          + componentes/ (CartaoAgencia, Termometro, Acoes)
-│   ├── Despesas/          + componentes/ (BlocoTrajeto, BlocoDespesa)
-│   └── Resumo/            + componentes/ (CartoesTotais, SecaoResumo)
-│
-├── estilos/             ARQUITETURA DE CSS
-│   ├── root/              TOKENS — a fonte da verdade
-│   │   ├── cores.css        a paleta e os papéis semânticos
-│   │   ├── tipografia.css   escala de tamanho e peso
-│   │   ├── espacamento.css  escala de 4px e larguras
-│   │   └── efeitos.css      raios, sombras, transições, camadas
-│   ├── base/              reset + aparência padrão do documento
-│   └── compartilhado/     CLASSES REUTILIZADAS POR VÁRIOS BLOCOS
-│       ├── campos.css       .campo, .controle, .opcao
-│       ├── botoes.css       .btn e suas variações
-│       ├── blocos.css       .painel, .bloco, .cartao, .aviso
-│       ├── etiquetas.css    .etiqueta (chips e selos)
-│       ├── animacoes.css    keyframes e classes de entrada
-│       └── utilitarios.css  .pilha, .linha, .texto-*
-│
-├── App.tsx              liga cada etapa ao seu componente
-└── main.tsx             ponto de entrada
+└── apps/
+    ├── desktop/         ← navega por ABAS, campos lado a lado
+    │   └── src/{componentes,abas,contexto,estilos}
+    │
+    └── mobile/          ← navega por PASSOS, um assunto por tela
+        └── src/{componentes,passos,navegacao,contexto,estilos}
 ```
 
-### Regra do CSS
+### O que é compartilhado e o que não é
 
-| Onde o estilo é usado                | Onde o arquivo fica                          |
-| ------------------------------------ | -------------------------------------------- |
-| Valor de cor, tamanho, raio, sombra  | `estilos/root/` — **nunca** um HEX solto      |
-| Em mais de um bloco ou aba           | `estilos/compartilhado/`                      |
-| Em um componente só                  | ao lado dele (`Botao/Botao.css`)              |
-| Em uma aba só                        | ao lado dela (`abas/Visita/Visita.css`)       |
+| Camada                            | Compartilhada? |
+| --------------------------------- | -------------- |
+| Tipos, configuração, regras       | **Sim** — `@cativa/nucleo` |
+| Reducer do estado do dia          | **Sim** — `@cativa/nucleo/estado` |
+| Serviços (IBGE, ViaCEP, storage)  | **Sim** — `@cativa/nucleo/servicos` |
+| Cores, tipografia, ícones         | **Sim** — `@cativa/tema` |
+| Dimensões (altura de campo/botão) | Não — cada app tem a sua |
+| Componentes de interface          | Não — o toque pede outra coisa |
+| Telas                             | Não — abas × passos |
 
-Nenhum arquivo de componente ou de aba escreve um HEX: sempre `var(--cor-...)`.
-Trocar o tema da marca é reapontar as variáveis semânticas em
-[cores.css](src/estilos/root/cores.css).
+Mudar a tarifa por KM é editar **um arquivo**
+([tarifas.ts](packages/nucleo/src/config/tarifas.ts)) e os dois apps passam a
+cobrar o valor novo. O mesmo vale para a paleta:
+[cores.css](packages/tema/cores.css) é a única fonte da cor da Cativa.
+
+---
+
+## Desktop × mobile
+
+Não é o mesmo app redimensionado. As decisões mudam porque o contexto muda:
+
+| Aspecto            | Desktop                    | Mobile                                  |
+| ------------------ | -------------------------- | --------------------------------------- |
+| Navegação          | Abas com trilha lateral    | Um passo por tela, barra de progresso   |
+| Campos por tela    | 2–3 lado a lado            | Um por vez                              |
+| Altura de campo    | 46 px                      | **56 px** (alvo de toque)               |
+| Fonte do campo     | 15 px                      | **16 px** (abaixo disso o iOS dá zoom)  |
+| Botão de ícone     | 38 px                      | **44 px** (mínimo para o dedo)          |
+| Ação principal     | Rodapé do painel           | **Barra fixa na base**, zona do polegar |
+| Autocomplete       | Lista suspensa             | **Busca em tela cheia** (o teclado não cobre) |
+| Data               | Calendário em modal        | Calendário + atalhos Hoje/Ontem         |
+| Nota fiscal        | Selecionar arquivo         | **Tirar foto** ou escolher arquivo      |
+| Modal              | Centralizado               | Folha subindo de baixo                  |
+| Efeito de toque    | `:hover`                   | `:active` (no toque hover "gruda")      |
+| Altura da tela     | `100vh`                    | `100dvh` + safe areas do iPhone         |
+
+### Passos do app mobile
+
+```
+1. Quem está preenchendo?     →  2. O que vai registrar?
+                                      ├── Visita:   3. Data → 4. Agências → 5. Análise
+                                      └── Despesas: 3. Trajetos → 4. Gastos
+                                                                      ↓
+                                                                  Resumo
+```
 
 ---
 
 ## Regras de negócio
 
-Todas ficam em [`src/nucleo/regras/`](src/nucleo/regras/), em funções puras e
-testáveis — a interface só as chama.
+Todas em [`packages/nucleo/src/regras/`](packages/nucleo/src/regras/), em
+funções puras — e cobertas por testes.
 
-**Reembolso por KM** — `reembolso = km × tarifa do executivo`.
-Tarifa padrão R$ 1,30; R$ 1,43 para os executivos listados em
-[tarifas.ts](src/nucleo/config/tarifas.ts). Trocar o executivo recalcula todos
-os trajetos já lançados.
+**Reembolso por KM** — `km × tarifa do executivo`. Padrão R$ 1,30; R$ 1,43 para
+os executivos listados em [tarifas.ts](packages/nucleo/src/config/tarifas.ts).
+Trocar o executivo recalcula todos os trajetos já lançados.
 
 **Fechamento do dia:**
 
@@ -146,49 +157,64 @@ os trajetos já lançados.
 Outras despesas no Cartão Clara são informativas: aparecem no resumo, mas não
 mexem no total.
 
-**Comprovante** — obrigatório no Cartão Pessoal (é o que garante o reembolso),
-dispensado no Cartão Clara. Trocar o cartão limpa categoria e anexo.
+**Comprovante** — obrigatório no Cartão Pessoal, dispensado no Cartão Clara.
+Trocar o cartão limpa categoria e anexo.
 
-**Termômetro** — escolher o nível abre um pop-up que só sai pelo "Entendi"; a
-definição precisa ser lida. Níveis Médio, Alto e Crítico exigem a descrição do
-ocorrido. Cada agência acumula quantos registros forem necessários.
+**Termômetro** — escolher o nível abre um pop-up que só sai pelo "Entendi".
+Níveis Médio, Alto e Crítico exigem a descrição do ocorrido. Cada agência
+acumula quantos registros forem necessários.
 
 **Salvar o dia** — exige pelo menos um trajeto ou uma agência visitada.
+
+### Testes
+
+```bash
+npm test
+```
+
+49 casos cobrindo tarifa, arredondamento, classificação de despesa,
+fechamento do dia, validação de cada etapa e montagem do fluxo. Como os dois
+apps chamam estas funções, passar aqui significa que **os dois calculam
+igual**.
 
 ---
 
 ## Como estender
 
-| Preciso...                    | Mexo em...                                                          |
-| ----------------------------- | ------------------------------------------------------------------- |
-| Incluir um executivo          | `nucleo/config/executivos.ts`                                        |
-| Mudar a tarifa por KM         | `nucleo/config/tarifas.ts`                                           |
-| Incluir produto ou atendente  | `nucleo/config/agencia.ts`                                           |
-| Incluir setor ou nível        | `nucleo/config/estresse.ts`                                          |
-| Incluir categoria de despesa  | `nucleo/config/despesas.ts`                                          |
-| Mudar como o total é calculado| `nucleo/regras/reembolso.ts`                                         |
-| Adicionar um campo ao dia     | tipo em `nucleo/tipos` → estado inicial e ação em `formularioReducer` |
-| Criar uma aba nova            | tipo `NomeEtapa` → `config/fluxo.ts` → pasta em `abas/` → mapa no `App.tsx` |
-| Adicionar um ícone            | uma linha em `componentes/ui/Icone/Icone.tsx`                        |
+| Preciso...                      | Mexo em...                                                       |
+| ------------------------------- | ---------------------------------------------------------------- |
+| Incluir um executivo            | `packages/nucleo/src/config/executivos.ts`                        |
+| Mudar a tarifa por KM           | `packages/nucleo/src/config/tarifas.ts`                           |
+| Incluir produto ou atendente    | `packages/nucleo/src/config/agencia.ts`                           |
+| Incluir setor ou nível          | `packages/nucleo/src/config/estresse.ts`                          |
+| Mudar o cálculo do total        | `packages/nucleo/src/regras/reembolso.ts` (+ atualizar o teste)   |
+| Mudar uma cor da marca          | `packages/tema/cores.css`                                         |
+| Adicionar um ícone              | `packages/tema/icones.ts` — passa a existir nos dois apps         |
+| Adicionar campo ao dia          | tipo em `nucleo/tipos` → ação em `nucleo/estado/formularioReducer.ts` |
+| Criar uma aba (desktop)         | `abas/` → mapa em `apps/desktop/src/App.tsx`                      |
+| Criar um passo (mobile)         | `passos/` → `navegacao/passos.ts` → mapa em `apps/mobile/src/App.tsx` |
 
 ---
 
 ## Integração com o CRM
 
 Toda a persistência passa pela interface
-[`RepositorioDias`](src/servicos/armazenamento/repositorioDias.ts) —
-`listar`, `salvar`, `excluir`, `limpar`.
+[`RepositorioDias`](packages/nucleo/src/servicos/armazenamento/repositorioDias.ts)
+— `listar`, `salvar`, `excluir`, `limpar`. Hoje a implementação é
+`localStorage`.
 
-Para trocar o `localStorage` pelo backend:
+Para ligar ao backend:
 
-1. crie `src/servicos/armazenamento/repositorioApi.ts` implementando a mesma
-   interface com `fetch()`;
+1. crie `packages/nucleo/src/servicos/armazenamento/repositorioApi.ts`
+   implementando a mesma interface com `fetch()`;
 2. troque uma linha em
-   [`armazenamento/index.ts`](src/servicos/armazenamento/index.ts).
+   [`armazenamento/index.ts`](packages/nucleo/src/servicos/armazenamento/index.ts).
 
-Nenhum componente muda. O `repositorioLocal` já normaliza registros gravados
-pela versão anterior do formulário, então nenhum dia salvo se perde.
+**Os dois apps passam a usar a API na mesma hora.** Nenhum componente muda.
 
-Os tipos de [`nucleo/tipos`](src/nucleo/tipos/index.ts) e as funções de
-[`nucleo/regras`](src/nucleo/regras/) não dependem de React — podem ser
-copiados direto para o CRM ou para uma API em Node.
+O `repositorioLocal` normaliza registros gravados pelas versões anteriores do
+formulário, então nenhum dia salvo se perde.
+
+O pacote `@cativa/nucleo` não depende de React nem de DOM de aplicação, e os
+imports internos são explícitos — ele roda direto no Node (é assim que os
+testes rodam). Pode ser copiado para o CRM ou para uma API sem adaptação.

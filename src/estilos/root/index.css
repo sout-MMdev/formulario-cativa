@@ -1,9 +1,0 @@
-/* ================================================================
-   ROOT — índice dos tokens.
-   Importe apenas este arquivo; a ordem interna importa.
-   ================================================================ */
-
-@import "./cores.css";
-@import "./tipografia.css";
-@import "./espacamento.css";
-@import "./efeitos.css";
